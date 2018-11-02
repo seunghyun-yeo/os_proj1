@@ -11,7 +11,7 @@ bool enqueue(queue* pqueue, void* itemptr)
 
 	//	Statements 
 	if (!(newptr =
-		new queuenode))
+		(queuenode*)malloc(sizeof(queuenode))))
 		return false;
 
 	newptr->dataptr = itemptr;

@@ -10,7 +10,7 @@ bool fullqueue(queue* pqueue)
 	queuenode* temp;
 
 	//	Statements 
-	temp = new queuenode;
+	temp = (queuenode*)queuenode(sizeof(queuenode));
 	if (temp)
 	{
 		free(temp);
