@@ -1,0 +1,13 @@
+void begin_uproc()
+{
+	struct sigaction old_sa;
+	struct sigaction new_sa;
+	memeset(&new_sa,0,sizeof(new_sa));
+	new_sa.sa_handler = &uu_handler;
+	sigaction(SIGUSR1,&new_sa, &old_sa);
+
+	while(1);
+}
+
+
+typedef 
