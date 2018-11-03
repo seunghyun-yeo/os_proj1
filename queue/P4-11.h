@@ -9,5 +9,6 @@ bool requeue(queue* pqueue){
 	pqueue->front = pqueue->front->next;
 	pqueue->rear->next = tempptr;
 	pqueue->rear=pqueue->rear->next;
+	pqueue->rear->next=NULL;
 	
 }
