@@ -16,3 +16,4 @@ Date:
 #include "P4-08.h"		/* Full queue */
 #include "P4-09.h"		/* queue count */
 #include "P4-10.h"		/* Destroy queue */
+#include "P4-11.h"		/* Replace queue */
