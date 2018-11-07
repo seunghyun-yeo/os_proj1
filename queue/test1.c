@@ -20,14 +20,12 @@ queue* readyqueue;
 int main(){
 
 	pid_t *pid;
-	//pid = (pid_t*)malloc(sizeof(pid_t));
 	readyqueue = createqueue();
 	struct sigaction old_sa;
 	struct sigaction new_sa;
 	memset(&new_sa, 0, sizeof(new_sa));
 	new_sa.sa_handler = &signal_handler;
 	sigaction(SIGALRM, &new_sa, &old_sa);
-	//need to make SIGALRM every 1sec
 
 	struct itimerval new_itimer, old_itimer;
 	new_itimer.it_interval.tv_sec = 1;
@@ -35,22 +33,22 @@ int main(){
 	new_itimer.it_value.tv_sec = 1;
 	new_itimer.it_value.tv_usec = 0;
 	setitimer(ITIMER_REAL, &new_itimer, &old_itimer);
-	
-//	printf("111111111111111\n");
-	for(int i = 0; i < 2; i++){
+
+	for(int i = 0; i < 2; i++)
+	{
 		pid = (pid_t*)malloc(sizeof(pid_t));
 
 		*pid = fork();
-	//	printf("2222222222222222\n");
-		if(*pid == 0){
-count=0;
+		if(*pid == 0)
+		{
+			count=0;
 			struct sigaction child_handler;
 			child_handler.sa_handler = &child_counter;
 			sigaction(SIGUSR1, &child_handler, &old_sa);
-			//kill(pid, SIGUSR1);
-			while(1){ }	
+			while(1);	
 		}
-		else if(*pid > 0){
+		else if(*pid > 0)
+		{
 			enqueue(readyqueue, pid);
 		}
 	}
@@ -66,17 +64,13 @@ count=0;
 	sigaction(SIGUSR2, &sigusr2, &old_sa);
 
 
-	while(1){
-
-	}
-	
+	while(1);
 	return 0;
 }
 void signal_handler(int signo){//time
-	pid_t *pid;//=(pid_t *)malloc(sizeof(pid_t));
+	pid_t *pid;
 	queuefront(readyqueue, (void**)&pid);
 	kill(*pid, SIGUSR1);
-	//free(pid);
 }
 void child_counter(int signo)
 {//child proc -> SIGUSR1
@@ -84,12 +78,12 @@ void child_counter(int signo)
 	int timeq = 2;
 
 	count++;
-total++;
+	total++;
 	printf("%d signaled! : %d\n",getpid(),count);
 	if((count == 2)&&(total != 4)){
 		kill(getppid(),SIGUSR2);
-count=0;
-}
+		count=0;
+	}
 
 	if(total == 4){
 		kill(getppid(), SIGUSR1);
@@ -100,19 +94,16 @@ count=0;
 
 void readyout(int signo){
 
-	printf("@@@@@@@@@@@\n");
-	pid_t *pid;//=(pid_t*)malloc(sizeof(pid_t));
+	pid_t *pid;
 	dequeue(readyqueue, (void**)&pid);
-	printf("out@@@@@@@@@@@@@@@\n");
-	if(emptyqueue(readyqueue)) {
-		//free(pid);
+	if(emptyqueue(readyqueue)) 
+	{
+		free(pid);
 		exit(0);
 	}
-	else {
-		printf("else!!!!!!!!\n");
-		//free(pid);
-		//kill(getpid(),SIGUSR1);
-		printf("@@@@@@@@@\n");
+	else 
+	{
+		free(pid);
 		return;
 	}
 }

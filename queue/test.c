@@ -12,7 +12,7 @@ int main()
 	
 	requeue(test_queue);
 
-	printf("%s\n",(char*)test_queue->front->dataptr);
+	printf("%s\n",(char*)test_queue->rear->dataptr);
 
 return 0;
 }
