@@ -11,9 +11,9 @@
 
 #include "queues.h"
 
-#define time_quantum 2
-#define maxproc 4
-#define maxcpuburst 4
+#define time_quantum 1
+#define maxproc 10
+#define maxcpuburst 10
 
 void signal_handler(int signo);
 void child_handler(int signo);
@@ -71,7 +71,9 @@ int main()
 
 			printf("msgq : %d\n",msgq);
 			io_time=2;
-			cpu_time=maxcpuburst;
+			srand(getpid());
+			while((cpu_time = rand()) < 1);
+			cpu_time %= maxcpuburst;
 			msg.mtype=0;
 			msg.pid=getpid();
 			msg.io_time=io_time;
@@ -91,7 +93,7 @@ int main()
 		else printf("fork error\n");
 	}
 
-	tiktok(1,0);
+	tiktok(0,100);
 
 	key=0x142735;
 	msgq = msgget(key,IPC_CREAT|0666);
@@ -140,12 +142,12 @@ void signal_handler(int signo)
 	if(!emptyqueue(rqueue))
 	{
 		queuefront(rqueue,(void**)&pcbptr);
-		if(pcbptr->io_time==0)
+		/*if(pcbptr->io_time==0)
 		{
 			kill(pcbptr->pid,SIGKILL);
 			free(pcbptr);
 			return;
-		}
+		}*/
 		pcbptr->tq--;
 		pcbptr->cpu_time++;
 		printf("pid : %d\n remain tq : %d\n",pcbptr->pid,pcbptr->tq);
@@ -204,14 +206,21 @@ void mymovqueue(queue* sourceq, queue* destq, int pid, int iotime)
 	queuenode *ploc=NULL;
 	queuenode *pploc= NULL;
 	pcb* pcbptr;
-
+	printf("@@@@@@2\n");
 	for(ppre=NULL,ploc=sourceq->front; ploc!=NULL;ppre=ploc,ploc=ploc->next){
 		pcbptr = ploc->dataptr;
+		
 		if(pcbptr->pid == pid){
-			ppre->next = ploc->next;
+			if(ppre != NULL)
+				ppre->next = ploc->next;
+			else
+				sourceq->front = ploc->next;
+	
 			if(ploc->next==NULL){
+			printf("444\n");
 			sourceq->rear=ppre;
 			}
+			
 			ploc->next = NULL;
 			sourceq->count--;
 			pcbptr->io_time = iotime;
@@ -224,12 +233,14 @@ void mymovqueue(queue* sourceq, queue* destq, int pid, int iotime)
 void child_handler(int signo)
 {
 	cpu_time--;
-
+	
 	printf("remain cpu time : %d\n",cpu_time);
 	if(cpu_time==0)
 	{
 		printf("send message\n");
 		ret = msgsnd(msgq, &msg,sizeof(msg),NULL);
+		while((cpu_time = rand())<1);
+		cpu_time%=maxcpuburst;
 		return;
 	}
 }
@@ -251,14 +262,3 @@ void tiktok(int a, int b)
 	new_itimer.it_value.tv_usec = b;
 	setitimer(ITIMER_REAL, &new_itimer, &old_itimer);
 }
-
-
-
-
-
-
-
-
-
-
-
