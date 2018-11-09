@@ -27,6 +27,7 @@ int cpu_time;
 int io_time;
 int ret;
 int key;
+int globaltik=0;
 
 int msgq;
 struct sigaction old_sa;
@@ -109,8 +110,27 @@ int main()
 
 void signal_handler(int signo)
 {
-	printf("tik\n");
+	globaltik++;
+
 	pcb *pcbptr = NULL;
+	if(globaltik==100)
+	{
+		while(!emptyqueue(rqueue))
+		{
+			dequeue(rqueue,(void**)&pcbptr);
+			kill(pcbptr->pid,SIGKILL);
+			free(pcbptr);
+		}
+
+		while(!emptyqueue(ioqueue))
+		{
+			dequeue(ioqueue,(void**)&pcbptr);
+			kill(pcbptr->pid,SIGKILL);
+			free(pcbptr);
+		}
+		exit(0);
+	}
+	printf("tik\n");
 	if((emptyqueue(rqueue))&&(emptyqueue(ioqueue)))
 	{
 		printf("kernel did all jobs\n");
@@ -233,9 +253,8 @@ void mymovqueue(queue* sourceq, queue* destq, int pid, int iotime)
 void child_handler(int signo)
 {
 	cpu_time--;
-	
 	printf("remain cpu time : %d\n",cpu_time);
-	if(cpu_time==0)
+	if(cpu_time<1)
 	{
 		printf("send message\n");
 		ret = msgsnd(msgq, &msg,sizeof(msg),NULL);
@@ -243,6 +262,7 @@ void child_handler(int signo)
 		cpu_time%=maxcpuburst;
 		return;
 	}
+
 }
 void reduceall()
 {
