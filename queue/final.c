@@ -12,7 +12,7 @@
 #include "queues.h"
 
 #define time_quantum 1
-#define maxproc 10
+#define maxproc 2
 #define maxcpuburst 10
 
 void signal_handler(int signo);
@@ -27,6 +27,7 @@ int cpu_time;
 int io_time;
 int ret;
 int key;
+int tikcount;
 
 int msgq;
 struct sigaction old_sa;
@@ -54,7 +55,7 @@ pcb* pcbdata;
 int main()
 {
 	memset(&new_sa, 0, sizeof(new_sa));
-	new_sa.sa_handler = &signal_handler;
+	new_a.sa_handler = &signal_handler;
 	sigaction(SIGALRM, &new_sa, &old_sa);
 	//need to make SIGALRM every 1sec
 
@@ -235,7 +236,7 @@ void child_handler(int signo)
 	cpu_time--;
 	
 	printf("remain cpu time : %d\n",cpu_time);
-	if(cpu_time==0)
+	if(cpu_time <= 0)
 	{
 		printf("send message\n");
 		ret = msgsnd(msgq, &msg,sizeof(msg),NULL);
