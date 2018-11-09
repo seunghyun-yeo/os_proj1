@@ -11,9 +11,9 @@
 
 #include "queues.h"
 
-#define time_quantum 1
-#define maxproc 2
-#define maxcpuburst 10
+#define time_quantum 2
+#define maxproc 4
+#define maxcpuburst 4
 
 void signal_handler(int signo);
 void child_handler(int signo);
@@ -27,7 +27,6 @@ int cpu_time;
 int io_time;
 int ret;
 int key;
-int tikcount;
 
 int msgq;
 struct sigaction old_sa;
@@ -55,7 +54,7 @@ pcb* pcbdata;
 int main()
 {
 	memset(&new_sa, 0, sizeof(new_sa));
-	new_a.sa_handler = &signal_handler;
+	new_sa.sa_handler = &signal_handler;
 	sigaction(SIGALRM, &new_sa, &old_sa);
 	//need to make SIGALRM every 1sec
 
@@ -72,9 +71,7 @@ int main()
 
 			printf("msgq : %d\n",msgq);
 			io_time=2;
-			srand(getpid());
-			while((cpu_time = rand()) < 1);
-			cpu_time %= maxcpuburst;
+			cpu_time=maxcpuburst;
 			msg.mtype=0;
 			msg.pid=getpid();
 			msg.io_time=io_time;
@@ -94,7 +91,7 @@ int main()
 		else printf("fork error\n");
 	}
 
-	tiktok(0,100);
+	tiktok(1,0);
 
 	key=0x142735;
 	msgq = msgget(key,IPC_CREAT|0666);
@@ -103,7 +100,18 @@ int main()
 	while (1)
 	{
 		while((ret=msgrcv(msgq, &msg, sizeof(msgbuf),0,IPC_NOWAIT))==-1);
+		//queuerear(rqueue,(void**)&pcbdata);
+		//if(pcbdata->pid==msg.pid)
+		//{
+		//	printf("%d == %d\n",pcbdata->pid, msg.pid);
 			mymovqueue(rqueue,ioqueue,msg.pid,msg.io_time);
+		//}
+		/*else
+		{
+			printf("recieved pid is different from rqueue's front pid\n");
+			printf("%d != %d\n",pcbdata->pid,msg.pid);
+			exit(0);
+		}*/
 	}
 	return 0;
 }
@@ -121,13 +129,9 @@ void signal_handler(int signo)
 	if(!emptyqueue(ioqueue))
 	{
 		reduceall();
-		
 		while(1)
 		{
-			if(emptyqueue(ioqueue)) break;
-
 			queuefront(ioqueue,(void**)&pcbptr);
-			
 			if(pcbptr->io_time==0)
 			{
 				dequeue(ioqueue,(void**)&pcbptr);
@@ -143,12 +147,12 @@ void signal_handler(int signo)
 	if(!emptyqueue(rqueue))
 	{
 		queuefront(rqueue,(void**)&pcbptr);
-		/*if(pcbptr->io_time==0)
+		if(pcbptr->io_time==0)
 		{
 			kill(pcbptr->pid,SIGKILL);
 			free(pcbptr);
 			return;
-		}*/
+		}
 		pcbptr->tq--;
 		pcbptr->cpu_time++;
 		printf("pid : %d\n remain tq : %d\n",pcbptr->pid,pcbptr->tq);
@@ -163,12 +167,12 @@ void signal_handler(int signo)
 	}
 }
 
-void searchqueue(queue* targetqueue, queuenode **ppre ,queuenode **pploc, int iotime)
+void searchqueue(queue* targetqueue, queuenode **ppre ,queuenode **ploc, int iotime)
 {
 	pcb * pcbptr;
-	for(*ppre=NULL,*pploc=targetqueue->front;*pploc!=NULL;*ppre=*pploc,*pploc=(*pploc)->next)
+	for(*ppre=NULL,*ploc=targetqueue->front;*ploc!=NULL;*ppre=*ploc,*ploc=(*ploc)->next)
 	{
-		pcbptr=(*pploc)->dataptr;
+		pcbptr=(*ploc)->dataptr;
 		if(pcbptr->io_time<iotime)
 			break;
 	}
@@ -176,26 +180,22 @@ void searchqueue(queue* targetqueue, queuenode **ppre ,queuenode **pploc, int io
 
 void insertqueue(queue* targetqueue, queuenode *ppre, queuenode *ploc, queuenode* pploc)
 {
-	if(ppre==NULL)//ploc is the first
+	//queuenode *insert;
+	//insert->dataptr=pcbptr;
+	//insert->dataptr = ploc->dataptr;	
+
+	if(ppre=NULL)
 	{
-		if(!emptyqueue(targetqueue)){
-			ploc->next = targetqueue->front;
-			targetqueue->front=ploc;
-		}
-		else{
-			targetqueue->front=ploc;
-			targetqueue->rear=ploc;
-		}
+		insert->next=targetqueue->front;
+		targetqueue->front=insert;
 	}
 	else
-	{	
-		if(pploc == NULL){//ploc is the end
-			ppre->next = ploc;
-			targetqueue->rear = ploc;
-			return;
-		}
+	{
 		ploc->next=ppre->next;
 		ppre->next= ploc;
+		if(pploc == NULL){
+			targetqueue->rear = ploc;
+		}
 	}
 	targetqueue->count++;
 }
@@ -207,44 +207,40 @@ void mymovqueue(queue* sourceq, queue* destq, int pid, int iotime)
 	queuenode *ploc=NULL;
 	queuenode *pploc= NULL;
 	pcb* pcbptr;
-	printf("@@@@@@2\n");
-	for(ppre=NULL,ploc=sourceq->front; ploc!=NULL;ppre=ploc,ploc=ploc->next){
+
+	for(ppre=NULL,ploc=sourceq->front; ploc!=NULL; ppre=ploc,ploc=ploc->next){
 		pcbptr = ploc->dataptr;
-		
 		if(pcbptr->pid == pid){
-			if(ppre != NULL)
-				ppre->next = ploc->next;
-			else
-				sourceq->front = ploc->next;
-	
-			if(ploc->next==NULL){
-			printf("444\n");
-			sourceq->rear=ppre;
-			}
-			
-			ploc->next = NULL;
+			ppre->next = ploc->next;
+			//free(ploc);
 			sourceq->count--;
-			pcbptr->io_time = iotime;
+			pcbptr->iotime = iotime;
 			break;
 		}
+
 	}
+	//dequeue가 아니고 traverse를 이용해서 pid가 같은애가 나가고 봉합하도록
+	//dequeue(sourceq,(void**)&pcbptr);
+	printf("dequeue  called\n");
 	searchqueue(destq,&ppre,&pploc,iotime);
+	printf("search queue  called\n");
 	insertqueue(destq,ppre,ploc,pploc);
+	printf("insert queue called\n");
 }
+
 void child_handler(int signo)
 {
 	cpu_time--;
-	
+
 	printf("remain cpu time : %d\n",cpu_time);
-	if(cpu_time <= 0)
+	if(cpu_time==0)
 	{
 		printf("send message\n");
 		ret = msgsnd(msgq, &msg,sizeof(msg),NULL);
-		while((cpu_time = rand())<1);
-		cpu_time%=maxcpuburst;
 		return;
 	}
 }
+
 void reduceall()
 {
 	pcb* pcbptr;
@@ -255,6 +251,7 @@ void reduceall()
 		pcbptr->io_time--;
 	}
 }
+
 void tiktok(int a, int b)
 {
 	new_itimer.it_interval.tv_sec = a;
@@ -263,3 +260,14 @@ void tiktok(int a, int b)
 	new_itimer.it_value.tv_usec = b;
 	setitimer(ITIMER_REAL, &new_itimer, &old_itimer);
 }
+
+
+
+
+
+
+
+
+
+
+
