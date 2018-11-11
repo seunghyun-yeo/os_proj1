@@ -8,12 +8,11 @@
 #include <sys/msg.h>
 #include <sys/types.h>
 #include <unistd.h> 
-
 #include "queues.h"
 
 #define time_quantum 1
-#define maxproc 10
-#define maxcpuburst 10
+#define maxproc 3
+#define maxcpuburst 4
 
 void signal_handler(int signo);
 void child_handler(int signo);
@@ -73,8 +72,8 @@ int main()
 			printf("msgq : %d\n",msgq);
 			io_time=2;
 			srand(getpid());
-			while((cpu_time = rand()) < 1);
-			cpu_time %= maxcpuburst;
+			while((cpu_time = rand()) < 2);
+			cpu_time = (cpu_time % maxcpuburst)+1;
 			msg.mtype=0;
 			msg.pid=getpid();
 			msg.io_time=io_time;
@@ -94,7 +93,7 @@ int main()
 		else printf("fork error\n");
 	}
 
-	tiktok(0,100);
+	tiktok(0,50);
 
 	key=0x142735;
 	msgq = msgget(key,IPC_CREAT|0666);
@@ -110,6 +109,10 @@ int main()
 
 void signal_handler(int signo)
 {
+	printf("----------------------------------\n");
+	printf("tik!! tikcount : %d\n",globaltik+1);
+	printf("----------------------------------\n");
+
 	globaltik++;
 
 	pcb *pcbptr = NULL;
@@ -130,8 +133,7 @@ void signal_handler(int signo)
 		}
 		exit(0);
 	}
-	printf("tik\n");
-	if((emptyqueue(rqueue))&&(emptyqueue(ioqueue)))
+		if((emptyqueue(rqueue))&&(emptyqueue(ioqueue)))
 	{
 		printf("kernel did all jobs\n");
 		exit(0);
@@ -147,7 +149,7 @@ void signal_handler(int signo)
 
 			queuefront(ioqueue,(void**)&pcbptr);
 			
-			if(pcbptr->io_time==0)
+			if(pcbptr->io_time == 0)
 			{
 				dequeue(ioqueue,(void**)&pcbptr);
 				enqueue(rqueue,(void*)pcbptr);
@@ -170,7 +172,7 @@ void signal_handler(int signo)
 		}*/
 		pcbptr->tq--;
 		pcbptr->cpu_time++;
-		printf("pid : %d\n remain tq : %d\n",pcbptr->pid,pcbptr->tq);
+		printf("pid : %d\nremain tq : %d\n",pcbptr->pid,pcbptr->tq);
 		kill(pcbptr->pid,SIGUSR1);
 		if(pcbptr->tq==0)
 		{
@@ -221,12 +223,11 @@ void insertqueue(queue* targetqueue, queuenode *ppre, queuenode *ploc, queuenode
 
 void mymovqueue(queue* sourceq, queue* destq, int pid, int iotime)
 {
-	printf("mymovqueue called\n");
+	//printf("mymovqueue called\n");
 	queuenode *ppre=NULL;
 	queuenode *ploc=NULL;
 	queuenode *pploc= NULL;
 	pcb* pcbptr;
-	printf("@@@@@@2\n");
 	for(ppre=NULL,ploc=sourceq->front; ploc!=NULL;ppre=ploc,ploc=ploc->next){
 		pcbptr = ploc->dataptr;
 		
@@ -237,7 +238,6 @@ void mymovqueue(queue* sourceq, queue* destq, int pid, int iotime)
 				sourceq->front = ploc->next;
 	
 			if(ploc->next==NULL){
-			printf("444\n");
 			sourceq->rear=ppre;
 			}
 			
@@ -257,9 +257,10 @@ void child_handler(int signo)
 	if(cpu_time<1)
 	{
 		printf("send message\n");
+		printf("pid : %d, io_time : %d\n", getpid(), io_time);
 		ret = msgsnd(msgq, &msg,sizeof(msg),NULL);
-		while((cpu_time = rand())<1);
-		cpu_time%=maxcpuburst;
+		while((cpu_time = rand())<2);
+		cpu_time = (cpu_time % maxcpuburst)+1;
 		return;
 	}
 
